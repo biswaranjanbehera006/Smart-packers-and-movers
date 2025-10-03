@@ -1,13 +1,13 @@
 // models/User.js
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const addressSchema = new mongoose.Schema({
   street: { type: String },
   city: { type: String },
   state: { type: String },
   postalCode: { type: String },
-  country: { type: String, default: 'India' },
+  country: { type: String, default: "India" },
 });
 
 const userSchema = new mongoose.Schema(
@@ -50,14 +50,23 @@ const userSchema = new mongoose.Schema(
     documents: [
       {
         docType: { type: String }, // e.g., "Aadhar", "License"
-        docUrl: { type: String },  // Cloudinary URL
-      }
+        docUrl: { type: String }, // Cloudinary URL
+      },
     ],
 
-    isEmailVerified: {
+    // 🔹 OTP Verification
+    isVerified: {
       type: Boolean,
       default: false,
     },
+    otp: {
+      type: String, // 6-digit OTP
+    },
+    otpExpiry: {
+      type: Date, // expiry time of OTP
+    },
+
+    // Block/Unblock by admin
     isBlocked: {
       type: Boolean,
       default: false,
