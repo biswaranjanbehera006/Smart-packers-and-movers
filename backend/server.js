@@ -25,6 +25,15 @@ app.use(morgan('dev'));
 // Use routes
 app.use("/api/auth", authRoutes);
 
+//admin routes
+app.use("/api/admin", require("./routes/admin.routes"));
+
+//booking 
+app.use("/api/bookings", require("./routes/booking.routes"));
+
+//payment
+app.use("/api/payments", require("./routes/payment.routes"));
+
 
 // Health check route
 app.get('/', (req, res) => {

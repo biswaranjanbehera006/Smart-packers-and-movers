@@ -1,4 +1,3 @@
-// models/User.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
@@ -50,19 +49,19 @@ const userSchema = new mongoose.Schema(
     documents: [
       {
         docType: { type: String }, // e.g., "Aadhar", "License"
-        docUrl: { type: String }, // Cloudinary URL
+        docUrl: { type: String },  // Cloudinary URL
       },
     ],
 
     // 🔹 OTP Verification
-    isVerified: {
+    isEmailVerified: {
       type: Boolean,
       default: false,
     },
     otp: {
       type: String, // 6-digit OTP
     },
-    otpExpiry: {
+    otpExpires: {
       type: Date, // expiry time of OTP
     },
 
