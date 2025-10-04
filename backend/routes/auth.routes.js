@@ -1,14 +1,15 @@
-// routes/auth.routes.js
 const express = require("express");
 const router = express.Router();
 
 // Import controller functions
 const {
-  register,       // Function to handle user registration
-  login,          // Function to handle login
-  getProfile,     // Function to get user profile
-  updateProfile,  // Function to update user profile
-  verifyOTP       // Function to verify email OTP
+  register,        // User registration (with email OTP)
+  login,           // Login after verification
+  getProfile,      // Get user profile
+  updateProfile,   // Update profile
+  verifyOTP,       // Verify email OTP
+  forgotPassword,  // Send OTP for password reset
+  resetPassword    // Reset password using OTP
 } = require("../controllers/auth.controller");
 
 // Import authentication middleware
@@ -27,6 +28,12 @@ router.post("/verify-otp", verifyOTP);
 
 // Login (only works after OTP verification)
 router.post("/login", login);
+
+// Forgot Password (send OTP to email)
+router.post("/forgot-password", forgotPassword);
+
+// Reset Password (verify OTP & set new password)
+router.post("/reset-password", resetPassword);
 
 // ================== Protected Routes ==================
 
