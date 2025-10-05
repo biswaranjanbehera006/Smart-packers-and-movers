@@ -34,6 +34,10 @@ app.use("/api/bookings", require("./routes/booking.routes"));
 //payment
 app.use("/api/payments", require("./routes/payment.routes"));
 
+//pdf routes
+app.use("/api/reports", require("./routes/report.routes"));
+
+
 
 // Health check route
 app.get('/', (req, res) => {

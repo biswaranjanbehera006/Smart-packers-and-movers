@@ -12,7 +12,12 @@ const {
   approveBooking,
   declineBooking,
   deleteBooking,
-   getDashboardStats,
+
+  // Dashboard & Analytics
+  getDashboardStats,
+  getMonthlyRevenue,
+  getMonthlyBookings,
+  getRevenueByService,
 } = require("../controllers/admin.controller");
 
 // ================= USERS =================
@@ -26,6 +31,12 @@ router.put("/bookings/:id/approve", protect, adminOnly, approveBooking);
 router.put("/bookings/:id/decline", protect, adminOnly, declineBooking);
 router.delete("/bookings/:id", protect, adminOnly, deleteBooking);
 
+// ================= DASHBOARD =================
 router.get("/dashboard", protect, adminOnly, getDashboardStats);
+
+// ================= ANALYTICS =================
+router.get("/analytics/monthly-revenue", protect, adminOnly, getMonthlyRevenue);
+router.get("/analytics/monthly-bookings", protect, adminOnly, getMonthlyBookings);
+router.get("/analytics/revenue-by-service", protect, adminOnly, getRevenueByService);
 
 module.exports = router;

@@ -1,35 +1,36 @@
 const Service = require("../models/Service");
 const cloudinary = require("../utils/cloudinary");
 
+// Async wrapper
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
-// ================= SERVICES MANAGEMENT =================
+// ✅ Create a new service
+exports.createService = asyncHandler(async (req, res) => {
+  const { title, description, price, category } = req.body;
 
-// ✅ Add a new service
-exports.addService = asyncHandler(async (req, res) => {
-  const { name, description, basePrice } = req.body;
-
-  if (await Service.findOne({ name })) {
-    return res.status(400).json({ success: false, message: "Service already exists" });
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "Image is required" });
   }
 
-  let imageUrl = "";
-  if (req.file) {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "services",
-    });
-    imageUrl = result.secure_url;
-  }
-
-  const service = await Service.create({
-    name,
-    description,
-    basePrice,
-    image: imageUrl,
+  // Upload image to Cloudinary
+  const result = await cloudinary.uploader.upload(req.file.path, {
+    folder: "services",
   });
 
-  res.status(201).json({ success: true, message: "Service added successfully", service });
+  const service = await Service.create({
+    title,
+    description,
+    price,
+    category,
+    image: result.secure_url,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Service created successfully",
+    service,
+  });
 });
 
 // ✅ Get all services
@@ -41,18 +42,13 @@ exports.getAllServices = asyncHandler(async (req, res) => {
 // ✅ Update service
 exports.updateService = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description, basePrice, isActive } = req.body;
+  const { title, description, price, category, isActive } = req.body;
 
   const service = await Service.findById(id);
-  if (!service) return res.status(404).json({ success: false, message: "Service not found" });
+  if (!service)
+    return res.status(404).json({ success: false, message: "Service not found" });
 
-  // Update fields
-  if (name) service.name = name;
-  if (description) service.description = description;
-  if (basePrice) service.basePrice = basePrice;
-  if (typeof isActive !== "undefined") service.isActive = isActive;
-
-  // Update image if uploaded
+  // If a new image is uploaded, replace it
   if (req.file) {
     const result = await cloudinary.uploader.upload(req.file.path, {
       folder: "services",
@@ -60,15 +56,27 @@ exports.updateService = asyncHandler(async (req, res) => {
     service.image = result.secure_url;
   }
 
+  if (title) service.title = title;
+  if (description) service.description = description;
+  if (price) service.price = price;
+  if (category) service.category = category;
+  if (isActive !== undefined) service.isActive = isActive;
+
   await service.save();
-  res.json({ success: true, message: "Service updated successfully", service });
+
+  res.json({
+    success: true,
+    message: "Service updated successfully",
+    service,
+  });
 });
 
 // ✅ Delete service
 exports.deleteService = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const service = await Service.findById(id);
-  if (!service) return res.status(404).json({ success: false, message: "Service not found" });
+  if (!service)
+    return res.status(404).json({ success: false, message: "Service not found" });
 
   await service.deleteOne();
   res.json({ success: true, message: "Service deleted successfully" });
