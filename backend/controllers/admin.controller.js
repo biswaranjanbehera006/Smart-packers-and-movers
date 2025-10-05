@@ -1,7 +1,8 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Booking = require("../models/Booking");
 
-// Async handler to avoid repetitive try-catch
+// Async handler to simplify error handling
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -60,7 +61,7 @@ exports.approveBooking = asyncHandler(async (req, res) => {
   booking.status = "Approved";
   await booking.save();
 
-  res.json({ success: true, message: "Booking approved successfully" });
+  res.json({ success: true, message: "Booking approved successfully", booking });
 });
 
 // ✅ Decline booking
@@ -75,7 +76,7 @@ exports.declineBooking = asyncHandler(async (req, res) => {
   booking.status = "Declined";
   await booking.save();
 
-  res.json({ success: true, message: "Booking declined successfully" });
+  res.json({ success: true, message: "Booking declined successfully", booking });
 });
 
 // ✅ Delete booking
@@ -91,23 +92,20 @@ exports.deleteBooking = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "Booking deleted successfully" });
 });
 
-
+// ================= DASHBOARD & ANALYTICS =================
 
 // ✅ Admin Dashboard Stats
 exports.getDashboardStats = asyncHandler(async (req, res) => {
-  // Count total users and bookings
   const totalUsers = await User.countDocuments();
   const totalBookings = await Booking.countDocuments();
 
-  // Count by booking status
   const pendingBookings = await Booking.countDocuments({ status: "Pending" });
   const approvedBookings = await Booking.countDocuments({ status: "Approved" });
   const declinedBookings = await Booking.countDocuments({ status: "Declined" });
 
-  // Calculate total revenue (from paid bookings)
   const paidBookings = await Booking.find({ paymentStatus: "Paid" });
   const totalRevenue = paidBookings.reduce(
-    (sum, booking) => sum + (booking.totalAmount || 0),
+    (sum, booking) => sum + (booking.totalAmount || booking.price || 0),
     0
   );
 
@@ -122,4 +120,89 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
       declinedBookings,
     },
   });
+});
+
+// ✅ Helper: Get date filter for last N months
+const buildLastNMonthsFilter = (field = "createdAt", months = 12) => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+  return { [field]: { $gte: start } };
+};
+
+// ✅ Monthly Revenue (default: last 12 months)
+exports.getMonthlyRevenue = asyncHandler(async (req, res) => {
+  const months = parseInt(req.query.months, 10) || 12;
+
+  const match = {
+    $match: {
+      paymentStatus: "Paid",
+      ...buildLastNMonthsFilter("updatedAt", months),
+    },
+  };
+
+  const group = {
+    $group: {
+      _id: { year: { $year: "$updatedAt" }, month: { $month: "$updatedAt" } },
+      totalRevenue: { $sum: { $ifNull: ["$totalAmount", "$price", 0] } },
+    },
+  };
+
+  const project = {
+    $project: {
+      _id: 0,
+      year: "$_id.year",
+      month: "$_id.month",
+      totalRevenue: 1,
+    },
+  };
+
+  const sort = { $sort: { year: 1, month: 1 } };
+  const data = await Booking.aggregate([match, group, project, sort]);
+
+  res.json({ success: true, data });
+});
+
+// ✅ Monthly Bookings (default: last 12 months)
+exports.getMonthlyBookings = asyncHandler(async (req, res) => {
+  const months = parseInt(req.query.months, 10) || 12;
+
+  const match = { $match: buildLastNMonthsFilter("createdAt", months) };
+  const group = {
+    $group: {
+      _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+      count: { $sum: 1 },
+    },
+  };
+  const project = {
+    $project: { _id: 0, year: "$_id.year", month: "$_id.month", count: 1 },
+  };
+  const sort = { $sort: { year: 1, month: 1 } };
+
+  const data = await Booking.aggregate([match, group, project, sort]);
+  res.json({ success: true, data });
+});
+
+// ✅ Revenue by Service Type
+exports.getRevenueByService = asyncHandler(async (req, res) => {
+  const data = await Booking.aggregate([
+    { $match: { paymentStatus: "Paid" } },
+    {
+      $group: {
+        _id: "$serviceType",
+        totalRevenue: { $sum: { $ifNull: ["$totalAmount", "$price", 0] } },
+        totalBookings: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        serviceType: "$_id",
+        totalRevenue: 1,
+        totalBookings: 1,
+      },
+    },
+    { $sort: { totalRevenue: -1 } },
+  ]);
+
+  res.json({ success: true, data });
 });
