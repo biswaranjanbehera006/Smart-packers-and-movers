@@ -9,7 +9,7 @@ const {
 
 // ================= USER BOOKINGS =================
 router.post("/", protect, userOnly, createBooking);           // Create new booking
-router.get("/my", protect, userOnly, getUserBookings);        // Get all bookings for logged-in user
+router.get("/user", protect, userOnly, getUserBookings);        // Get all bookings for logged-in user
 router.put("/:id/cancel", protect, userOnly, cancelBooking);  // Cancel booking
 
 module.exports = router;

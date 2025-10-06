@@ -38,6 +38,48 @@ exports.unblockUser = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "User unblocked successfully" });
 });
 
+// ✅ Change user role (only between admin ↔ user)
+exports.updateUserRole = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+
+  // Allow only "admin" and "user"
+  const allowedRoles = ["admin", "user"];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid role. Only 'admin' and 'user' are allowed.`,
+    });
+  }
+
+  const user = await User.findById(id);
+  if (!user)
+    return res.status(404).json({ success: false, message: "User not found" });
+
+  // Prevent self-demotion by main admin (optional safeguard)
+  if (req.user.userId === user._id.toString() && role === "user") {
+    return res.status(400).json({
+      success: false,
+      message: "You cannot remove your own admin access.",
+    });
+  }
+
+  user.role = role;
+  await user.save();
+
+  res.json({
+    success: true,
+    message: `User role updated successfully to ${role}`,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+    },
+  });
+});
+
 // ================= BOOKINGS MANAGEMENT =================
 
 // ✅ Get all bookings

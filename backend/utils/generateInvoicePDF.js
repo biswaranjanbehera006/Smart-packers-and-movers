@@ -1,22 +1,27 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
+const axios = require("axios");
 
-const generateInvoicePDF = async (booking, user) => {
-  return new Promise((resolve, reject) => {
+const generateInvoicePDF = async (bookingDoc, userDoc) => {
+  return new Promise(async (resolve, reject) => {
     try {
+      // 🧹 Convert to plain JS objects (important fix)
+      const booking = bookingDoc.toObject ? bookingDoc.toObject() : bookingDoc;
+      const user = userDoc.toObject ? userDoc.toObject() : userDoc;
+
       const doc = new PDFDocument({ margin: 50 });
-      const filePath = path.join(
-        __dirname,
-        `../temp/invoice_${booking._id}.pdf`
-      );
+      const filePath = path.join(__dirname, `../temp/invoice_${booking._id}.pdf`);
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
 
       // ===== HEADER =====
       const logoUrl =
-        "https://res.cloudinary.com/dwxsprktq/image/upload/v1728119205/packers_logo.png";
-      doc.image(logoUrl, 50, 30, { width: 80 });
+        "https://drive.google.com/uc?export=view&id=1CiOY4tYrgrWpb83Rk4idw4IgJH9HWBqs";
+      const response = await axios.get(logoUrl, { responseType: "arraybuffer" });
+      const logoBuffer = Buffer.from(response.data, "base64");
+
+      doc.image(logoBuffer, 50, 30, { width: 80 });
       doc
         .fontSize(20)
         .text("Smart Packers & Movers", 150, 40)
@@ -36,42 +41,74 @@ const generateInvoicePDF = async (booking, user) => {
         .moveDown(1);
 
       // ===== CUSTOMER DETAILS =====
-      doc.fontSize(12).text("Customer Details:", 50, 160, { bold: true });
+      doc.fontSize(12).fillColor("black").text("Customer Details:", 50, 160);
       doc.fontSize(10);
-      doc.text(`Name: ${user.name}`, 50, 180);
-      doc.text(`Email: ${user.email}`, 50, 195);
-      doc.text(`Phone: ${user.phone}`, 50, 210);
+      doc.text(`Name: ${user.name || "N/A"}`, 50, 180);
+      doc.text(`Email: ${user.email || "N/A"}`, 50, 195);
+      doc.text(`Phone: ${user.phone || "N/A"}`, 50, 210);
       doc.text(
-        `Address: ${
+        `User Address: ${
           user.address?.street
             ? `${user.address.street}, ${user.address.city}, ${user.address.state}`
-            : "N/A"
+            : "Not provided"
         }`,
         50,
         225,
         { width: 500 }
       );
 
+      // ===== ADDRESS DETAILS =====
+      const pickup = booking.pickupAddress
+        ? [
+            booking.pickupAddress.street,
+            booking.pickupAddress.city,
+            booking.pickupAddress.state,
+            booking.pickupAddress.postalCode,
+            booking.pickupAddress.country,
+          ]
+            .filter(Boolean)
+            .join(", ")
+        : "Not specified";
+
+      const drop = booking.dropAddress
+        ? [
+            booking.dropAddress.street,
+            booking.dropAddress.city,
+            booking.dropAddress.state,
+            booking.dropAddress.postalCode,
+            booking.dropAddress.country,
+          ]
+            .filter(Boolean)
+            .join(", ")
+        : "Not specified";
+
+      doc.moveDown(1);
+      doc.fontSize(12).text("Pickup Address:", 50, 250);
+      doc.fontSize(10).text(pickup, 150, 250, { width: 400 });
+
+      doc.fontSize(12).text("Drop Address:", 50, 270);
+      doc.fontSize(10).text(drop, 150, 270, { width: 400 });
+
       // ===== BOOKING DETAILS =====
       doc.moveDown(2);
-      doc.fontSize(12).text("Booking Details:", 50, 270);
+      doc.fontSize(12).fillColor("black").text("Booking Details:", 50, 300);
       doc.fontSize(10);
-      doc.text(`Booking ID: ${booking._id}`, 50, 290);
-      doc.text(`Service Type: ${booking.serviceType || "General"}`, 50, 305);
-      doc.text(`Status: ${booking.status}`, 50, 320);
-      doc.text(`Payment Status: ${booking.paymentStatus || "Pending"}`, 50, 335);
-      doc.text(`Booking Date: ${booking.createdAt.toLocaleString()}`, 50, 350);
+      doc.text(`Booking ID: ${booking._id}`, 50, 320);
+      doc.text(`Service Type: ${booking.serviceType || "General"}`, 50, 335);
+      doc.text(`Status: ${booking.status}`, 50, 350);
+      doc.text(`Payment Status: ${booking.paymentStatus || "Pending"}`, 50, 365);
+      doc.text(`Booking Date: ${new Date(booking.createdAt).toLocaleString()}`, 50, 380);
 
       // ===== PAYMENT DETAILS =====
       doc.moveDown(2);
-      doc.fontSize(12).text("Payment Summary:", 50, 380);
+      doc.fontSize(12).text("Payment Summary:", 50, 410);
       doc.fontSize(10);
-      const basePrice = booking.totalAmount || 0;
-      doc.text(`Base Price: ₹${basePrice}`, 50, 400);
+      const basePrice = booking.price || 0;
+      doc.text(`Base Price: ₹${basePrice}`, 50, 430);
       const gst = (basePrice * 0.18).toFixed(2);
-      doc.text(`GST (18%): ₹${gst}`, 50, 415);
+      doc.text(`GST (18%): ₹${gst}`, 50, 445);
       const total = (basePrice * 1.18).toFixed(2);
-      doc.fontSize(12).text(`Total Payable: ₹${total}`, 50, 440, { bold: true });
+      doc.fontSize(12).text(`Total Payable: ₹${total}`, 50, 470, { bold: true });
 
       // ===== FOOTER =====
       doc.moveDown(4);
@@ -81,7 +118,7 @@ const generateInvoicePDF = async (booking, user) => {
         .text(
           "Thank you for choosing Smart Packers & Movers. Have a safe moving experience!",
           50,
-          500,
+          510,
           { width: 500, align: "center" }
         );
 
@@ -94,7 +131,6 @@ const generateInvoicePDF = async (booking, user) => {
         });
 
       doc.end();
-
       stream.on("finish", () => resolve(filePath));
     } catch (err) {
       reject(err);
