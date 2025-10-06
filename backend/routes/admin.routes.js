@@ -1,11 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const { protect, adminOnly } = require("../middleware/auth.middleware");
+
 const {
   // User Management
   getAllUsers,
   blockUser,
   unblockUser,
+  updateUserRole, // ✅ New controller for changing user role
 
   // Booking Management
   getAllBookings,
@@ -24,6 +26,9 @@ const {
 router.get("/users", protect, adminOnly, getAllUsers);
 router.put("/users/:id/block", protect, adminOnly, blockUser);
 router.put("/users/:id/unblock", protect, adminOnly, unblockUser);
+
+// ✅ Change user role (admin ↔ user only)
+router.put("/users/:id/role", protect, adminOnly, updateUserRole);
 
 // ================= BOOKINGS =================
 router.get("/bookings", protect, adminOnly, getAllBookings);
