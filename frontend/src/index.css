@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+:root {
+  --cream: #fff8f1;
+  --brown: #6f4e37;
+  --light-brown: #c9a57c;
+  --accent: #ffb6c1;
+}
